@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:ui' as ui;
+import 'Trip.dart';
+import 'package:intl/intl.dart';
 
 void main() => runApp(new MyApp());
 
@@ -178,29 +181,99 @@ class DashBoard extends StatefulWidget {
 }
 
 class _DashBoardState extends State<DashBoard> {
-  TextStyle style = TextStyle(fontFamily: 'Montserrat', fontSize: 20.0);
   final int index = 0;
+  final List<Trip> tripsList = [
+    Trip("New York", DateTime.now(), DateTime.now(), 200.00, "car"),
+    Trip("Boston", DateTime.now(), DateTime.now(), 450.00, "plane"),
+    Trip("Washington D.C.", DateTime.now(), DateTime.now(), 900.00, "bus"),
+    Trip("Austin", DateTime.now(), DateTime.now(), 170.00, "car"),
+    Trip("Scranton", DateTime.now(), DateTime.now(), 180.00, "car"),
+  ];
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
+    return Container(
+      child: new ListView.builder(
+          itemCount: tripsList.length,
+          itemBuilder: (BuildContext context, int index) =>
+              buildTripCard(context, index)),
+    );
+  }
+
+  Widget buildTripCard(BuildContext context, int index) {
+    final trip = tripsList[index];
+    return new Container(
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(10.0),
           child: Column(
-        children: List.generate(widget.value.length, (index) {
-          return Text(
-              "Route Id:" +
-                  widget.value[index]['routeId'].toString() +
-                  "\n" +
-                  "VehicleNo:" +
-                  widget.value[index]['vehicleNo'] +
-                  "\n" +
-                  "Status:" +
-                  widget.value[index]['status'],
-              style: TextStyle(fontSize: 30));
-        }),
-      )),
-      appBar: new AppBar(
-        title: new Text("Dash Board"),
+            children: <Widget>[
+              Padding(
+                padding: const EdgeInsets.only(top: 4.0, bottom: 4.0),
+                child: Row(children: <Widget>[
+                  Text(widget.value[index]['vehicleNo'] , style: new TextStyle(fontSize: 30.0),),
+                  Spacer(),
+                ]),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 4.0, bottom: 10.0),
+                child: Row(children: <Widget>[
+                  Text(
+                      "${DateFormat('dd/MM/yyyy').format(trip.startDate).toString()}"),
+                  Spacer(),
+                ]),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 4.0, bottom: 4.0),
+                child: Row(
+                  children: <Widget>[
+                    Text(widget.value[index]['routeId'].toString(), style: new TextStyle(fontSize: 20.0),),
+                    Spacer(),
+                    Icon(Icons.directions_bus),
+                  ],
+                ),
+              )
+            ],
+          ),
+        ),
       ),
     );
   }
+//   TextStyle style = TextStyle(fontFamily: 'Montserrat', fontSize: 20.0);
+//   final int index = 0;
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       body: SingleChildScrollView(
+//       child: Container(
+//           child: Column(
+//         children: List.generate(widget.value.length, (index) {
+//           return Text(
+//               "Route Id:" +
+//                   widget.value[index]['routeId'].toString() +
+//                   "\n" +
+//                   "VehicleNo:" +
+//                   widget.value[index]['vehicleNo'] +
+//                   "\n" +
+//                   "Status:" +
+//                   widget.value[index]['status'],
+//               style: TextStyle(fontSize: 30, foreground: Paint()
+//       ..shader = ui.Gradient.linear(
+//         const Offset(0, 20),
+//         const Offset(150, 20),
+//         <Color>[
+//           Colors.red,
+//           Colors.yellow,
+//         ],
+//       )));
+// }),
+//       ))),
+//       appBar: new AppBar(
+//         title: new Text("Dash Board"),
+//       ),
+//     );
+
+  // }
+
+
 }
