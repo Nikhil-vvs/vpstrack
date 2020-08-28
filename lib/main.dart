@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'dart:ui' as ui;
 import 'Trip.dart';
 import 'package:intl/intl.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'dart:io';
 
 void main() => runApp(new MyApp());
 
@@ -80,6 +82,18 @@ class _MyHomePageState extends State<MyHomePage> {
       return convertedDatatoJson;
     }
 
+    routes(String accesstoken) async {
+      String url =
+          'http://ec2-13-233-193-38.ap-south-1.compute.amazonaws.com/routes';
+      Map<String, String> headers = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $accesstoken'
+      };
+      var response = await http.get(url, headers: headers);
+      Map<String, dynamic> convertedDatatoJson = json.decode(response.body);
+      return convertedDatatoJson;
+    }
+
     final loginButon = Material(
       elevation: 5.0,
       borderRadius: BorderRadius.circular(30.0),
@@ -97,9 +111,11 @@ class _MyHomePageState extends State<MyHomePage> {
             setState(() {
               message = 'Login Successful';
             });
-            String accesstoken = rsp['access_token'];
+            final String accesstoken = rsp['access_token'];
             String vendorName = rsp['vendorName'];
             var rsp1 = await buses(accesstoken);
+            //var rsp2 = await routes(accesstoken);
+            //print(rsp2);
             Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -168,6 +184,9 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
         ),
       ),
+      appBar: new AppBar(
+        title: new Text("Vehicle Tracking System"),
+      ),
     );
   }
 }
@@ -182,16 +201,19 @@ class DashBoard extends StatefulWidget {
 
 class _DashBoardState extends State<DashBoard> {
   final int index = 0;
-  final List<Trip> tripsList = [
-    Trip("New York", DateTime.now(), DateTime.now(), 200.00, "car"),
-    Trip("Boston", DateTime.now(), DateTime.now(), 450.00, "plane"),
-    Trip("Washington D.C.", DateTime.now(), DateTime.now(), 900.00, "bus"),
-    Trip("Austin", DateTime.now(), DateTime.now(), 170.00, "car"),
-    Trip("Scranton", DateTime.now(), DateTime.now(), 180.00, "car"),
-  ];
-
+  final List<Trip> tripsList = [];
   @override
   Widget build(BuildContext context) {
+    for (int i = 0; i < widget.value.length; i++) {
+      tripsList.add(Trip(
+          widget.value[i]['IMEI'],
+          widget.value[i]['driverId'],
+          widget.value[i]['fuelCapacity'],
+          widget.value[i]['personCapacity'],
+          widget.value[i]['routeId'],
+          widget.value[i]['status'],
+          widget.value[i]['vehicleNo']));
+    }
     return Container(
       child: new ListView.builder(
           itemCount: tripsList.length,
@@ -211,15 +233,20 @@ class _DashBoardState extends State<DashBoard> {
               Padding(
                 padding: const EdgeInsets.only(top: 4.0, bottom: 4.0),
                 child: Row(children: <Widget>[
-                  Text(widget.value[index]['vehicleNo'] , style: new TextStyle(fontSize: 30.0),),
+                  Text(
+                    "Vehicle No: " + widget.value[index]['vehicleNo'],
+                    style: new TextStyle(fontSize: 20.0),
+                  ),
                   Spacer(),
                 ]),
               ),
               Padding(
-                padding: const EdgeInsets.only(top: 4.0, bottom: 10.0),
+                padding: const EdgeInsets.only(top: 4.0, bottom: 4.0),
                 child: Row(children: <Widget>[
                   Text(
-                      "${DateFormat('dd/MM/yyyy').format(trip.startDate).toString()}"),
+                    "Route Id: " + widget.value[index]['routeId'].toString(),
+                    style: new TextStyle(fontSize: 15.0),
+                  ),
                   Spacer(),
                 ]),
               ),
@@ -227,9 +254,24 @@ class _DashBoardState extends State<DashBoard> {
                 padding: const EdgeInsets.only(top: 4.0, bottom: 4.0),
                 child: Row(
                   children: <Widget>[
-                    Text(widget.value[index]['routeId'].toString(), style: new TextStyle(fontSize: 20.0),),
+                    Text(
+                      "Status: " + widget.value[index]['status'],
+                      style: new TextStyle(fontSize: 15.0, color: Colors.green),
+                    ),
                     Spacer(),
-                    Icon(Icons.directions_bus),
+                    IconButton(
+                      icon: Icon(Icons.directions_bus),
+                      onPressed: () {
+                        var routevalue = [
+                          {'routeId': widget.value[index]['routeId']}
+                        ];
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) =>
+                                    DashBoard1(routevalue: routevalue)));
+                      },
+                    )
                   ],
                 ),
               )
@@ -239,41 +281,136 @@ class _DashBoardState extends State<DashBoard> {
       ),
     );
   }
-//   TextStyle style = TextStyle(fontFamily: 'Montserrat', fontSize: 20.0);
-//   final int index = 0;
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       body: SingleChildScrollView(
-//       child: Container(
-//           child: Column(
-//         children: List.generate(widget.value.length, (index) {
-//           return Text(
-//               "Route Id:" +
-//                   widget.value[index]['routeId'].toString() +
-//                   "\n" +
-//                   "VehicleNo:" +
-//                   widget.value[index]['vehicleNo'] +
-//                   "\n" +
-//                   "Status:" +
-//                   widget.value[index]['status'],
-//               style: TextStyle(fontSize: 30, foreground: Paint()
-//       ..shader = ui.Gradient.linear(
-//         const Offset(0, 20),
-//         const Offset(150, 20),
-//         <Color>[
-//           Colors.red,
-//           Colors.yellow,
-//         ],
-//       )));
-// }),
-//       ))),
-//       appBar: new AppBar(
-//         title: new Text("Dash Board"),
-//       ),
-//     );
+}
 
-  // }
+class DashBoard1 extends StatefulWidget {
+  final List routevalue;
 
+  DashBoard1({Key key, @required this.routevalue}) : super(key: key);
+  @override
+  _DashBoard1State createState() => new _DashBoard1State();
+}
 
+class _DashBoard1State extends State<DashBoard1> {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Column(
+        children: <Widget>[
+          Padding(
+            padding: EdgeInsets.only(left: 16, right: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: <Widget>[
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      "Route No: " + widget.routevalue[0]['routeId'].toString(),
+                      style: GoogleFonts.openSans(
+                          textStyle: TextStyle(
+                              color: Colors.blue,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold)),
+                    ),
+                    SizedBox(
+                      height: 4,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          SizedBox(
+            height: 40,
+          ),
+          GridDashboard()
+        ],
+      ),
+      appBar: new AppBar(title: new Text("Bus Details")),
+    );
+  }
+}
+
+class GridDashboard extends StatelessWidget {
+  Items item1 =
+      new Items(title: "Bus Stops", subtitle: "", img: "assets/busstops.PNG");
+
+  Items item2 = new Items(
+    title: "Vehicle Status",
+    subtitle: "",
+    img: "assets/buses.png",
+  );
+  Items item3 = new Items(
+    title: "Locations",
+    subtitle: "Live Tracking",
+    img: "assets/map.png",
+  );
+  Items item6 = new Items(
+    title: "Driver Details",
+    subtitle: "",
+    img: "assets/driver.png",
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    List<Items> myList = [item1, item2, item3];
+    myList.add(item6);
+    var color = 0xff453658;
+    return Flexible(
+      child: GridView.count(
+          childAspectRatio: 1.0,
+          padding: EdgeInsets.only(left: 16, right: 16),
+          crossAxisCount: 2,
+          crossAxisSpacing: 18,
+          mainAxisSpacing: 18,
+          children: myList.map((data) {
+            return Container(
+              decoration: BoxDecoration(
+                  color: Color(color), borderRadius: BorderRadius.circular(10)),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  Image.asset(
+                    data.img,
+                    width: 42,
+                  ),
+                  SizedBox(
+                    height: 14,
+                  ),
+                  Text(
+                    data.title,
+                    style: GoogleFonts.openSans(
+                        textStyle: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600)),
+                  ),
+                  SizedBox(
+                    height: 8,
+                  ),
+                  Text(
+                    data.subtitle,
+                    style: GoogleFonts.openSans(
+                        textStyle: TextStyle(
+                            color: Colors.white38,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600)),
+                  ),
+                  SizedBox(
+                    height: 14,
+                  ),
+                ],
+              ),
+            );
+          }).toList()),
+    );
+  }
+}
+
+class Items {
+  String title;
+  String subtitle;
+  String img;
+  Items({this.title, this.subtitle, this.img});
 }

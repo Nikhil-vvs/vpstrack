@@ -1,10 +1,14 @@
+import 'dart:ffi';
+
 class Trip {
-  final String title;
-  final DateTime startDate;
-  final DateTime endDate;
-  final double budget;
-  final String travelType;
+  final String IMEI;
+  final int driverid;
+  final int fuelCapacity;
+  final int personCapacity;
+  final int routeId;
+  final String status;
+  final String vehicleNo;
 
-
-  Trip(this.title, this.startDate, this.endDate, this.budget, this.travelType);
+  Trip(this.IMEI, this.driverid, this.fuelCapacity, this.personCapacity,
+      this.routeId, this.status, this.vehicleNo);
 }
