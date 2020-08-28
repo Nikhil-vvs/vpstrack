@@ -8,6 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:io';
 
 void main() => runApp(new MyApp());
+final List token = [];
 
 class MyApp extends StatelessWidget {
   // This widget is the root of your application.
@@ -111,15 +112,17 @@ class _MyHomePageState extends State<MyHomePage> {
             setState(() {
               message = 'Login Successful';
             });
-            final String accesstoken = rsp['access_token'];
+            String accesstoken = rsp['access_token'];
             String vendorName = rsp['vendorName'];
+            token.add(accesstoken);
             var rsp1 = await buses(accesstoken);
             //var rsp2 = await routes(accesstoken);
             //print(rsp2);
             Navigator.push(
                 context,
                 MaterialPageRoute(
-                    builder: (context) => DashBoard(value: rsp1)));
+                    builder: (context) =>
+                        DashBoard(value: rsp1, accesstoken: accesstoken)));
           } else {
             setState(() {
               message = 'Invalid Credentials!';
@@ -193,8 +196,9 @@ class _MyHomePageState extends State<MyHomePage> {
 
 class DashBoard extends StatefulWidget {
   final List value;
-
-  DashBoard({Key key, @required this.value}) : super(key: key);
+  final String accesstoken;
+  DashBoard({Key key, @required this.value, this.accesstoken})
+      : super(key: key);
   @override
   _DashBoardState createState() => new _DashBoardState();
 }
@@ -265,11 +269,17 @@ class _DashBoardState extends State<DashBoard> {
                         var routevalue = [
                           {'routeId': widget.value[index]['routeId']}
                         ];
+                        if (token.length == 1) {
+                          token.add(widget.value[index]['routeId']);
+                        } else {
+                          token[1] = widget.value[index]['routeId'];
+                        }
                         Navigator.push(
                             context,
                             MaterialPageRoute(
-                                builder: (context) =>
-                                    DashBoard1(routevalue: routevalue)));
+                                builder: (context) => DashBoard1(
+                                    routevalue: routevalue,
+                                    accesstoken: widget.accesstoken)));
                       },
                     )
                   ],
@@ -285,8 +295,9 @@ class _DashBoardState extends State<DashBoard> {
 
 class DashBoard1 extends StatefulWidget {
   final List routevalue;
-
-  DashBoard1({Key key, @required this.routevalue}) : super(key: key);
+  final String accesstoken;
+  DashBoard1({Key key, @required this.routevalue, this.accesstoken})
+      : super(key: key);
   @override
   _DashBoard1State createState() => new _DashBoard1State();
 }
@@ -351,6 +362,17 @@ class GridDashboard extends StatelessWidget {
     subtitle: "",
     img: "assets/driver.png",
   );
+  driver(String accesstoken) async {
+    final url =
+        'http://ec2-13-233-193-38.ap-south-1.compute.amazonaws.com/drivers';
+    Map<String, String> headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $accesstoken'
+    };
+    var response = await http.get(url, headers: headers);
+    List convertedDatatoJson = json.decode(response.body);
+    return convertedDatatoJson;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -371,9 +393,50 @@ class GridDashboard extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
-                  Image.asset(
-                    data.img,
-                    width: 42,
+                  FlatButton(
+                    onPressed: () async {
+                      if (data.title == "Vehicle Status") {
+                        var resp = await driver(token[0]);
+                        for (int i = 0; i < resp.length; i++) {
+                          if (token[1] == resp[i]['routeId']) {
+                            final String status = resp[i]['status'];
+                            final int fuelCapacity = resp[i]['fuelCapacity'];
+                            final int personCapacity =
+                                resp[i]['personCapacity'];
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => VehicleStatus(
+                                        status: status,
+                                        fuelCapacity: fuelCapacity,
+                                        personCapacity: personCapacity)));
+                          }
+                        }
+                      }
+                      ;
+                      if (data.title == "Driver Details") {
+                        var resp = await driver(token[0]);
+                        for (int i = 0; i < resp.length; i++) {
+                          if (token[1] == resp[i]['routeId']) {
+                            final String driverName = resp[i]['driverName'];
+                            final int driverId = resp[i]['driverId'];
+                            final String phoneNo = resp[i]['phone'];
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => DriverDetails(
+                                        driverName: driverName,
+                                        driverId: driverId,
+                                        phoneNo: phoneNo)));
+                          }
+                        }
+                      }
+                      ;
+                    },
+                    child: Image.asset(
+                      data.img,
+                      width: 42,
+                    ),
                   ),
                   SizedBox(
                     height: 14,
@@ -404,6 +467,196 @@ class GridDashboard extends StatelessWidget {
               ),
             );
           }).toList()),
+    );
+  }
+}
+
+class DriverDetails extends StatefulWidget {
+  String driverName;
+  int driverId;
+  String phoneNo;
+  DriverDetails(
+      {Key key, @required this.driverName, this.driverId, this.phoneNo})
+      : super(key: key);
+  @override
+  _DriverDetailsState createState() => _DriverDetailsState();
+}
+
+class _DriverDetailsState extends State<DriverDetails> {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Column(
+        children: <Widget>[
+          Padding(
+            padding: const EdgeInsets.all(36.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: <Widget>[
+                    SizedBox(
+                      height: 155.0,
+                      child: Image.asset(
+                        "assets/driver.png",
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                    Text(
+                      "Driver ID: ",
+                      style: GoogleFonts.openSans(
+                          textStyle: TextStyle(
+                              color: Colors.black,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold)),
+                    ),
+                    Text(
+                      widget.driverId.toString(),
+                      style: GoogleFonts.openSans(
+                          textStyle: TextStyle(
+                              color: Colors.blue,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold)),
+                    ),
+                    Text(
+                      "Driver Name: ",
+                      style: GoogleFonts.openSans(
+                          textStyle: TextStyle(
+                              color: Colors.black,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold)),
+                    ),
+                    Text(
+                      widget.driverName,
+                      style: GoogleFonts.openSans(
+                          textStyle: TextStyle(
+                              color: Colors.blue,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold)),
+                    ),
+                    Text(
+                      "Phone No: ",
+                      style: GoogleFonts.openSans(
+                          textStyle: TextStyle(
+                              color: Colors.black,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold)),
+                    ),
+                    Text(
+                      widget.phoneNo,
+                      style: GoogleFonts.openSans(
+                          textStyle: TextStyle(
+                              color: Colors.blue,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold)),
+                    ),
+                    SizedBox(
+                      height: 4,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      appBar: new AppBar(title: new Text("Driver Details")),
+    );
+  }
+}
+
+class VehicleStatus extends StatefulWidget {
+  final String status;
+  final int personCapacity;
+  final int fuelCapacity;
+  VehicleStatus(
+      {Key key, @required this.status, this.personCapacity, this.fuelCapacity})
+      : super(key: key);
+  @override
+  _VehicleStatusState createState() => _VehicleStatusState();
+}
+
+class _VehicleStatusState extends State<VehicleStatus> {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Column(
+        children: <Widget>[
+          Padding(
+            padding: const EdgeInsets.all(36.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: <Widget>[
+                    SizedBox(
+                      height: 155.0,
+                      child: Image.asset(
+                        "assets/buses.png",
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                    Text(
+                      "Status : ",
+                      style: GoogleFonts.openSans(
+                          textStyle: TextStyle(
+                              color: Colors.black,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold)),
+                    ),
+                    Text(
+                      widget.status,
+                      style: GoogleFonts.openSans(
+                          textStyle: TextStyle(
+                              color: Colors.blue,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold)),
+                    ),
+                    Text(
+                      "Fuel Capacity: ",
+                      style: GoogleFonts.openSans(
+                          textStyle: TextStyle(
+                              color: Colors.black,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold)),
+                    ),
+                    Text(
+                      widget.fuelCapacity.toString(),
+                      style: GoogleFonts.openSans(
+                          textStyle: TextStyle(
+                              color: Colors.blue,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold)),
+                    ),
+                    Text(
+                      "Person Capacity: ",
+                      style: GoogleFonts.openSans(
+                          textStyle: TextStyle(
+                              color: Colors.black,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold)),
+                    ),
+                    Text(
+                      widget.personCapacity.toString(),
+                      style: GoogleFonts.openSans(
+                          textStyle: TextStyle(
+                              color: Colors.blue,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold)),
+                    ),
+                    SizedBox(
+                      height: 4,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      appBar: new AppBar(title: new Text("Vehicle Status")),
     );
   }
 }
