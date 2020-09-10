@@ -11,6 +11,7 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() => runApp(new MyApp());
 final List token = [];
@@ -20,6 +21,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Flutter login UI',
       theme: ThemeData(
         primarySwatch: Colors.blue,
@@ -91,12 +93,9 @@ class _MyHomePageState extends State<MyHomePage> {
     routes(String accesstoken) async {
       String url =
           'http://ec2-13-233-193-38.ap-south-1.compute.amazonaws.com/routes';
-      Map<String, String> headers = {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $accesstoken'
-      };
+      Map<String, String> headers = {'Authorization': 'Bearer $accesstoken'};
       var response = await http.get(url, headers: headers);
-      Map<String, dynamic> convertedDatatoJson = json.decode(response.body);
+      List convertedDatatoJson = json.decode(response.body);
       return convertedDatatoJson;
     }
 
@@ -121,13 +120,12 @@ class _MyHomePageState extends State<MyHomePage> {
             String vendorName = rsp['vendorName'];
             token.add(accesstoken);
             var rsp1 = await buses(accesstoken);
-            //var rsp2 = await routes(accesstoken);
-            //print(rsp2);
+            var rsp2 = await routes(accesstoken);
             Navigator.push(
                 context,
                 MaterialPageRoute(
-                    builder: (context) =>
-                        DashBoard(value: rsp1, accesstoken: accesstoken)));
+                    builder: (context) => DashBoard(
+                        value: rsp1, accesstoken: accesstoken, value1: rsp2)));
           } else {
             setState(() {
               message = 'Invalid Credentials!';
@@ -202,7 +200,8 @@ class _MyHomePageState extends State<MyHomePage> {
 class DashBoard extends StatefulWidget {
   final List value;
   final String accesstoken;
-  DashBoard({Key key, @required this.value, this.accesstoken})
+  final List value1;
+  DashBoard({Key key, @required this.value, this.accesstoken, this.value1})
       : super(key: key);
   @override
   _DashBoardState createState() => new _DashBoardState();
@@ -214,6 +213,12 @@ class _DashBoardState extends State<DashBoard> {
   @override
   Widget build(BuildContext context) {
     for (int i = 0; i < widget.value.length; i++) {
+      for (int j = 0; j < widget.value1.length; j++) {
+        if (widget.value1[j]['routeId'] == widget.value[i]['routeId']) {
+          widget.value[i]['routename'] = widget.value1[j]['routeName'];
+          break;
+        }
+      }
       tripsList.add(Trip(
           widget.value[i]['IMEI'],
           widget.value[i]['driverId'],
@@ -221,8 +226,32 @@ class _DashBoardState extends State<DashBoard> {
           widget.value[i]['personCapacity'],
           widget.value[i]['routeId'],
           widget.value[i]['status'],
-          widget.value[i]['vehicleNo']));
+          widget.value[i]['vehicleNo'],
+          widget.value[i]['routename']));
     }
+    var iconButton = IconButton(
+        icon: Icon(
+          Icons.exit_to_app,
+          color: Colors.white,
+        ),
+        onPressed: () async {
+          SharedPreferences prefs = await SharedPreferences.getInstance();
+          prefs?.clear();
+          Navigator.pushReplacement(context,
+              MaterialPageRoute(builder: (BuildContext context) => MyApp()));
+        });
+    return Scaffold(
+      body: Container(
+        child: new ListView.builder(
+            itemCount: tripsList.length,
+            itemBuilder: (BuildContext context, int index) =>
+                buildTripCard(context, index)),
+      ),
+      appBar: new AppBar(
+        title: new Text("Dash Board"),
+        actions: <Widget>[iconButton],
+      ),
+    );
     return Scaffold(
       body: Container(
         child: new ListView.builder(
@@ -266,6 +295,17 @@ class _DashBoardState extends State<DashBoard> {
               ),
               Padding(
                 padding: const EdgeInsets.only(top: 4.0, bottom: 4.0),
+                child: Row(children: <Widget>[
+                  Text(
+                    "Route Name: " +
+                        widget.value[index]['routename'].toString(),
+                    style: new TextStyle(fontSize: 13.0),
+                  ),
+                  Spacer(),
+                ]),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 4.0, bottom: 4.0),
                 child: Row(
                   children: <Widget>[
                     Text(
@@ -279,6 +319,9 @@ class _DashBoardState extends State<DashBoard> {
                         var routevalue = [
                           {'routeId': widget.value[index]['routeId']}
                         ];
+                        var routeName = [
+                          {'routeName': widget.value[index]['routename']}
+                        ];
                         if (token.length == 1) {
                           token.add(widget.value[index]['routeId']);
                         } else {
@@ -289,7 +332,8 @@ class _DashBoardState extends State<DashBoard> {
                             MaterialPageRoute(
                                 builder: (context) => DashBoard1(
                                     routevalue: routevalue,
-                                    accesstoken: widget.accesstoken)));
+                                    accesstoken: widget.accesstoken,
+                                    routename: routeName)));
                       },
                     )
                   ],
@@ -306,7 +350,9 @@ class _DashBoardState extends State<DashBoard> {
 class DashBoard1 extends StatefulWidget {
   final List routevalue;
   final String accesstoken;
-  DashBoard1({Key key, @required this.routevalue, this.accesstoken})
+  final List routename;
+  DashBoard1(
+      {Key key, @required this.routevalue, this.accesstoken, this.routename})
       : super(key: key);
   @override
   _DashBoard1State createState() => new _DashBoard1State();
@@ -332,6 +378,18 @@ class _DashBoard1State extends State<DashBoard1> {
                           textStyle: TextStyle(
                               color: Colors.blue,
                               fontSize: 18,
+                              fontWeight: FontWeight.bold)),
+                    ),
+                    SizedBox(
+                      height: 4,
+                    ),
+                    Text(
+                      "Route Name: " +
+                          widget.routename[0]['routeName'].toString(),
+                      style: GoogleFonts.openSans(
+                          textStyle: TextStyle(
+                              color: Colors.blue,
+                              fontSize: 15,
                               fontWeight: FontWeight.bold)),
                     ),
                     SizedBox(
@@ -384,6 +442,15 @@ class GridDashboard extends StatelessWidget {
     return convertedDatatoJson;
   }
 
+  busstops(String accesstoken) async {
+    final url =
+        'http://ec2-13-233-193-38.ap-south-1.compute.amazonaws.com/busstops';
+    Map<String, String> headers = {'Authorization': 'Bearer $accesstoken'};
+    var response = await http.get(url, headers: headers);
+    Map<String, dynamic> convertedDatatoJson = json.decode(response.body);
+    return convertedDatatoJson;
+  }
+
   @override
   Widget build(BuildContext context) {
     List<Items> myList = [item1, item2, item3];
@@ -409,9 +476,29 @@ class GridDashboard extends StatelessWidget {
                         Navigator.push(
                             context,
                             MaterialPageRoute(
-                                builder: (context) => LiveTracking(
-                                      title: "LiveTracking",
-                                    )));
+                                builder: (context) =>
+                                    LiveTracking(title: "LiveTracking")));
+                      }
+                      ;
+                      if (data.title == "Bus Stops") {
+                        final List busstop = [];
+                        var resp = await busstops(token[0]);
+                        bool isKeyPresent =
+                            resp.containsKey(token[1].toString());
+                        if (isKeyPresent == true) {
+                          for (var i = 0;
+                              i < resp[token[1].toString()].length;
+                              i++) {
+                            busstop.add(
+                                resp[token[1].toString()][i]['busStopName']);
+                          }
+                          ;
+                        }
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) =>
+                                    BusStop(busstop: busstop)));
                       }
                       ;
                       if (data.title == "Vehicle Status") {
@@ -585,6 +672,54 @@ class _DriverDetailsState extends State<DriverDetails> {
   }
 }
 
+class BusStop extends StatefulWidget {
+  final List busstop;
+  BusStop({Key key, @required this.busstop}) : super(key: key);
+  @override
+  _BusStopState createState() => _BusStopState();
+}
+
+class _BusStopState extends State<BusStop> {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        child: new ListView.builder(
+            itemCount: widget.busstop.length,
+            itemBuilder: (BuildContext context, int index) =>
+                buildBusstops(context, index)),
+      ),
+      appBar: new AppBar(
+        title: new Text("Bus Stops"),
+      ),
+    );
+  }
+
+  Widget buildBusstops(BuildContext context, int index) {
+    return new Container(
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(10.0),
+          child: Column(
+            children: <Widget>[
+              Padding(
+                padding: const EdgeInsets.only(top: 4.0, bottom: 4.0),
+                child: Row(children: <Widget>[
+                  Text(
+                    (index + 1).toString() + ". " + widget.busstop[index],
+                    style: new TextStyle(fontSize: 20.0),
+                  ),
+                  Spacer(),
+                ]),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class VehicleStatus extends StatefulWidget {
   final String status;
   final int personCapacity;
@@ -694,25 +829,33 @@ class _LiveTrackingState extends State<LiveTracking> {
   Marker marker;
   Circle circle;
   GoogleMapController _controller;
+  Future<List> locationv(String accesstoken) async {
+    final url =
+        'http://ec2-13-233-193-38.ap-south-1.compute.amazonaws.com/tracking';
+    Map<String, String> headers = {'Authorization': 'Bearer $accesstoken'};
+    var response = await http.get(url, headers: headers);
+    List convertedDatatoJson = json.decode(response.body);
+    return convertedDatatoJson;
+  }
 
   final CameraPosition initialLocation = CameraPosition(
-    target: LatLng(17.671528, 83.203609),
+    target: LatLng(17.390614, 78.3181),
     zoom: 14.4746,
   );
 
   Future<Uint8List> getMarker() async {
     ByteData byteData =
-        await DefaultAssetBundle.of(context).load("assets/bus.png");
+        await DefaultAssetBundle.of(context).load("assets/car.png");
     return byteData.buffer.asUint8List();
   }
 
-  void updateMarkerAndCircle(LocationData newLocalData, Uint8List imageData) {
-    LatLng latlng = LatLng(newLocalData.latitude, newLocalData.longitude);
+  void updateMarkerAndCircle(LocationData newLocalData, Uint8List imageData,
+      String longitude, String latitude) {
+    LatLng latlng = LatLng(double.parse(latitude), double.parse(longitude));
     this.setState(() {
       marker = Marker(
           markerId: MarkerId("home"),
           position: latlng,
-          rotation: newLocalData.heading,
           draggable: false,
           zIndex: 2,
           flat: true,
@@ -720,7 +863,6 @@ class _LiveTrackingState extends State<LiveTracking> {
           icon: BitmapDescriptor.fromBytes(imageData));
       circle = Circle(
           circleId: CircleId("car"),
-          radius: newLocalData.accuracy,
           zIndex: 1,
           strokeColor: Colors.blue,
           center: latlng,
@@ -732,8 +874,17 @@ class _LiveTrackingState extends State<LiveTracking> {
     try {
       Uint8List imageData = await getMarker();
       var location = await _locationTracker.getLocation();
+      var resp = await locationv(token[0]);
+      String latitude = "17.390614";
+      String longitude = "78.3181";
+      for (int i = 0; i < resp.length; i++) {
+        if (token[1] == resp[i]['routeId']) {
+          latitude = resp[i]['latitude'];
+          longitude = resp[i]['longitude'];
+        }
+      }
 
-      updateMarkerAndCircle(location, imageData);
+      updateMarkerAndCircle(location, imageData, longitude, latitude);
       if (_locationSubscription != null) {
         _locationSubscription.cancel();
       }
@@ -743,10 +894,11 @@ class _LiveTrackingState extends State<LiveTracking> {
           _controller.animateCamera(CameraUpdate.newCameraPosition(
               new CameraPosition(
                   bearing: 192.8334901395799,
-                  target: LatLng(newLocalData.latitude, newLocalData.longitude),
+                  target:
+                      LatLng(double.parse(latitude), double.parse(longitude)),
                   tilt: 0,
                   zoom: 18.00)));
-          updateMarkerAndCircle(newLocalData, imageData);
+          updateMarkerAndCircle(newLocalData, imageData, longitude, latitude);
         }
       });
     } on PlatformException catch (e) {

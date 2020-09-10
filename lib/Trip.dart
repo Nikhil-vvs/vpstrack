@@ -8,7 +8,8 @@ class Trip {
   final int routeId;
   final String status;
   final String vehicleNo;
+  final String routeName;
 
   Trip(this.IMEI, this.driverid, this.fuelCapacity, this.personCapacity,
-      this.routeId, this.status, this.vehicleNo);
+      this.routeId, this.status, this.vehicleNo, this.routeName);
 }

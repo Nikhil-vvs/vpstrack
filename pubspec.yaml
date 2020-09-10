@@ -27,6 +27,7 @@ dependencies:
   flutter:
     sdk: flutter
   http: ^0.12.0+2
+  shared_preferences: ^0.4.0
 
 
   # The following adds the Cupertino Icons font to your application.
@@ -59,6 +60,7 @@ flutter:
    - notification.png
    - driver.png
    - bus.png
+   - car.png
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see
